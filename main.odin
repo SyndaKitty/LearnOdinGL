@@ -3,6 +3,7 @@ package main
 import "core:fmt"
 import "core:c"
 import "core:strings"
+import "core:math"
 
 import gl "vendor:OpenGL"
 import "vendor:glfw"
@@ -16,13 +17,11 @@ program: Program;
 
 wall_texture: GLTexture;
 face_texture: GLTexture;
+transform : matrix[4, 4]f32;
 
-identity_matrix := [?]f32 {
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1,
-};
+x: f32;
+y: f32;
+blend: f32;
 
 rectangle_vertices := [?]f32 {
     // positions      // colors       // uvs
@@ -52,7 +51,7 @@ main :: proc() {
     glfw.SetFramebufferSizeCallback(window, size_callback);
 
     gl.load_up_to(4, 6, get_proc_address);
-    gl.ClearColor(0, 0, 0, 0);
+    gl.ClearColor(0.2, 0.3, 0.3, 1.0);
 
     program = load_shaders();
 
@@ -91,10 +90,32 @@ main :: proc() {
     for !glfw.WindowShouldClose(window) {
         gl.Clear(gl.COLOR_BUFFER_BIT);
     
-        gl.Uniform1f(program.uniforms["time"].location, f32(glfw.GetTime()));
-        gl.Uniform1f(program.uniforms["blend"].location, 0.5);
+        if glfw.GetKey(window, glfw.KEY_W) == 1 {
+            y += 0.01;
+        }
+        if glfw.GetKey(window, glfw.KEY_S) == 1 {
+            y -= 0.01;
+        }
+        if glfw.GetKey(window, glfw.KEY_D) == 1 {
+            x += 0.01;
+        }
+        if glfw.GetKey(window, glfw.KEY_A) == 1 {
+            x -= 0.01;
+        }
+        if glfw.GetKey(window, glfw.KEY_UP) == 1 {
+            blend = min(blend + 0.01, 1.0);
+        }
+        if glfw.GetKey(window, glfw.KEY_DOWN) == 1 {
+            blend = max(blend - 0.01, 0.0);
+        }
+
+        time := f32(glfw.GetTime());
+
+        gl.Uniform1f(program.uniforms["time"].location, time);
+        gl.Uniform1f(program.uniforms["blend"].location, blend);
         
-        gl.UniformMatrix4fv(program.uniforms["transform"].location, 1, false, &identity_matrix[0])
+        transform = translation(x, y) * rotation(time);
+        gl.UniformMatrix4fv(program.uniforms["transform"].location, 1, false, &transform[0, 0])
 
         gl.BindVertexArray(vao);
         gl.DrawElements(gl.TRIANGLES, len(rectangle_indices), gl.UNSIGNED_INT, rawptr(uintptr(0)));
@@ -193,4 +214,39 @@ key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods
 
 size_callback :: proc "c" (window: glfw.WindowHandle, width, height: i32) {
     gl.Viewport(0, 0, width, height);
+}
+
+rotation :: proc(theta: f32) -> matrix[4, 4]f32 {
+    c := math.cos(theta);
+    s := math.sin(theta);
+
+    return matrix[4, 4]f32 {
+        c,-s, 0, 0,
+        s, c, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1,
+    };
+}
+
+translation :: proc(x, y: f32) -> matrix[4, 4]f32 {
+    return matrix[4, 4]f32 {
+        1, 0, 0, x,
+        0, 1, 0, y,
+        0, 0, 1, 0,
+        0, 0, 0, 1,
+    };
+}
+
+min :: proc(a, b: f32) -> f32 {
+    if a < b {
+        return a;
+    }
+    return b;
+}
+
+max :: proc(a, b: f32) -> f32 {
+    if a < b {
+        return b;
+    }
+    return a;
 }
