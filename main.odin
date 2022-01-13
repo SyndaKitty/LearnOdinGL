@@ -45,8 +45,9 @@ main :: proc() {
         fmt.println("Unable to create window, terminating.");
         glfw.Terminate();
     }
-
+    
     glfw.MakeContextCurrent(window);
+    glfw.SwapInterval(1);
     glfw.SetKeyCallback(window, key_callback);
     glfw.SetFramebufferSizeCallback(window, size_callback);
 
@@ -235,18 +236,4 @@ translation :: proc(x, y: f32) -> matrix[4, 4]f32 {
         0, 0, 1, 0,
         0, 0, 0, 1,
     };
-}
-
-min :: proc(a, b: f32) -> f32 {
-    if a < b {
-        return a;
-    }
-    return b;
-}
-
-max :: proc(a, b: f32) -> f32 {
-    if a < b {
-        return b;
-    }
-    return a;
 }
